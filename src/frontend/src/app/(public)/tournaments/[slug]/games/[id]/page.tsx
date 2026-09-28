@@ -11,9 +11,9 @@ type GameDetailResponse = {
   isDone: boolean;
   gameType: string;
   hasBanner: boolean;
-  isOrganizersParticipating: boolean;
   participants: string[];  // GUIDs
   organizers: string[];    // GUIDs
+  playingOrganizers: string[]; // GUIDs — arrangører som spilte, de andre dømte
   spectators: string[];    // GUIDs
   firstPlace: string[];    // GUIDs
   secondPlace: string[];   // GUIDs
@@ -114,9 +114,12 @@ function PlacementRow({
 function PersonList({
   persons,
   emptyText,
+  note,
 }: {
   persons: PersonSummaryResponse[];
   emptyText: string;
+  // Valgfri tekst til høyre for navnet, for eksempel arrangørens rolle
+  note?: (person: PersonSummaryResponse) => string;
 }) {
   if (persons.length === 0) {
     return <p className="text-gray-500">{emptyText}</p>;
@@ -127,9 +130,12 @@ function PersonList({
       {persons.map((p) => (
         <li
           key={p.id}
-          className="border border-gray-200 rounded px-3 py-1.5 text-sm"
+          className="flex justify-between border border-gray-200 rounded px-3 py-1.5 text-sm"
         >
-          {p.firstName} {p.lastName}
+          <span>
+            {p.firstName} {p.lastName}
+          </span>
+          {note && <span className="text-gray-600">{note(p)}</span>}
         </li>
       ))}
     </ul>
@@ -209,12 +215,6 @@ export default async function GamePage({
         <span>{game.gameType}</span>
         <span>·</span>
         <span>{game.isDone ? "Ferdig" : "Pågår"}</span>
-        {game.isOrganizersParticipating && (
-          <>
-            <span>·</span>
-            <span>Arrangør deltar</span>
-          </>
-        )}
       </div>
 
       {/* Valgfri beskrivelse */}
@@ -274,6 +274,9 @@ export default async function GamePage({
             <PersonList
               persons={organizerPersons}
               emptyText="Ingen arrangører registrert."
+              note={(p) =>
+                game.playingOrganizers.includes(p.id) ? "Spilte" : "Dømte"
+              }
             />
           </section>
 

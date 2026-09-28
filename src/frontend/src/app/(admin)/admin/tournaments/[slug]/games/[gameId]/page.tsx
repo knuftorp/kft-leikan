@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { addParticipantAction, completeGameAction } from "./actions";
+import {
+  addOrganizerAction,
+  addParticipantAction,
+  completeGameAction,
+} from "./actions";
 
 // Datamodell for spill med detaljer - inkluderer deltakere og plasseringer
 type GameDetailResponse = {
@@ -11,9 +15,9 @@ type GameDetailResponse = {
   description?: string;
   isDone: boolean;
   gameType: string;
-  isOrganizersParticipating: boolean;
   participants: string[];
   organizers: string[];
+  playingOrganizers: string[];
   spectators: string[];
   firstPlace: string[];
   secondPlace: string[];
@@ -105,8 +109,18 @@ export default async function AdminGameDetailPage({ params }: Props) {
         a.firstName.localeCompare(b.firstName, "nb")
     );
 
-  // Bundet Server Action - binder gameId og turneringens slug inn i actionen
+  // Alle spillere kan velges som arrangør - velges en eksisterende arrangør, byttes rollen
+  const sortedPersons = persons
+    .slice()
+    .sort(
+      (a, b) =>
+        a.lastName.localeCompare(b.lastName, "nb") ||
+        a.firstName.localeCompare(b.firstName, "nb")
+    );
+
+  // Bundne Server Actions - binder gameId og turneringens slug inn i actionen
   const completeGame = completeGameAction.bind(null, gameId, tournamentSlug);
+  const addOrganizer = addOrganizerAction.bind(null, gameId, tournamentSlug);
 
   return (
     <>
@@ -125,12 +139,6 @@ export default async function AdminGameDetailPage({ params }: Props) {
           <span>{game.gameType}</span>
           <span>·</span>
           <span>{game.isDone ? "Ferdig" : "Pågår"}</span>
-          {game.isOrganizersParticipating && (
-            <>
-              <span>·</span>
-              <span>Arrangørene deltar</span>
-            </>
-          )}
         </div>
       </header>
 
@@ -190,6 +198,64 @@ export default async function AdminGameDetailPage({ params }: Props) {
         </section>
       )}
 
+      {/* ---- Legg til arrangør med rolle ---- */}
+      {!game.isDone && (
+        <section
+          className="border border-gray-200 rounded p-4 mb-4"
+          aria-labelledby="add-organizer-title"
+        >
+          <h2 className="text-lg font-semibold mb-1" id="add-organizer-title">
+            Legg til arrangør
+          </h2>
+          <p className="text-sm text-gray-500 mb-3">
+            Velger du en som allerede er arrangør, byttes rollen.
+          </p>
+
+          <form action={addOrganizer} className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 min-w-[220px]">
+              <label
+                htmlFor="organizerPersonId"
+                className="block text-sm font-medium mb-1"
+              >
+                Spiller
+              </label>
+              <select
+                id="organizerPersonId"
+                name="personId"
+                className="rounded border border-gray-300 px-2 py-1.5 text-sm w-full"
+                required
+              >
+                <option value="">Velg spiller…</option>
+                {sortedPersons.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.lastName}, {person.firstName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <fieldset className="flex items-center gap-4 py-1.5">
+              <legend className="sr-only">Rolle</legend>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="radio" name="role" value="spilte" required />
+                Spilte
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="radio" name="role" value="dømte" />
+                Dømte
+              </label>
+            </fieldset>
+
+            <button
+              type="submit"
+              className="rounded bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+            >
+              Legg til
+            </button>
+          </form>
+        </section>
+      )}
+
       {/* ---- Personoversikt - deltakere, arrangører, tilskuere ---- */}
       <div className="grid gap-4 mb-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Deltakere */}
@@ -231,9 +297,12 @@ export default async function AdminGameDetailPage({ params }: Props) {
               {game.organizers.map((personId) => (
                 <li
                   key={personId}
-                  className="border-b border-gray-200 last:border-b-0 py-1.5 text-sm"
+                  className="flex justify-between border-b border-gray-200 last:border-b-0 py-1.5 text-sm"
                 >
-                  {getPersonName(personId)}
+                  <span>{getPersonName(personId)}</span>
+                  <span className="text-gray-500">
+                    {game.playingOrganizers.includes(personId) ? "Spilte" : "Dømte"}
+                  </span>
                 </li>
               ))}
             </ul>
