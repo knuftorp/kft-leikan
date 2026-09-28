@@ -38,4 +38,24 @@ public sealed class GameBannerAndQueryTests
         Assert.True(result.IsSuccess);
         Assert.Equal("Spill", result.Value!.Name);
     }
+
+    [Fact]
+    public async Task GetGameById_ViserHvilkeArrangørerSomSpilte()
+    {
+        await using var db = TestAppDbContext.Create();
+        var mari = Guid.NewGuid();
+        var tor = Guid.NewGuid();
+        // Mari arrangerte og spilte, Tor arrangerte og dømte
+        var game = Game.Create("Spill", Guid.NewGuid());
+        game.AddOrganizer(mari, withParticipation: true);
+        game.AddOrganizer(tor, withParticipation: false);
+        db.Games.Add(game);
+        await db.SaveChangesAsync();
+
+        var result = await new GetGameByIdQueryHandler(db).Handle(new GetGameByIdQuery(game.Id));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(new[] { mari, tor }, result.Value!.Organizers);
+        Assert.Equal(new[] { mari }, result.Value!.PlayingOrganizers);
+    }
 }

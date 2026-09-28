@@ -40,6 +40,7 @@ internal sealed class TestAppDbContext(DbContextOptions<TestAppDbContext> option
 
         ConfigureList("_participants");
         ConfigureList("_organizers");
+        ConfigureList("_playingOrganizers");
         ConfigureList("_spectators");
         ConfigureList("_firstPlace");
         ConfigureList("_secondPlace");

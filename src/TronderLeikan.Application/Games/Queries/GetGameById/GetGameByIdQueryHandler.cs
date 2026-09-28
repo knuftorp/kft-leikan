@@ -14,8 +14,8 @@ public sealed class GetGameByIdQueryHandler(IAppDbContext db)
         if (game is null) return GameErrors.NotFound;
         return new GameDetailResponse(
             game.Id, game.TournamentId, game.Name, game.Description,
-            game.IsDone, game.GameType, game.HasBanner, game.IsOrganizersParticipating,
-            game.Participants, game.Organizers, game.Spectators,
+            game.IsDone, game.GameType, game.HasBanner,
+            game.Participants, game.Organizers, game.PlayingOrganizers, game.Spectators,
             game.FirstPlace, game.SecondPlace, game.ThirdPlace);
     }
 }
