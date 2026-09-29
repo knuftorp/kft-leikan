@@ -18,7 +18,6 @@ public class GameTests
         game.TournamentId.Should().Be(tournamentId);
         game.GameType.Should().Be(GameType.Standard);
         game.IsDone.Should().BeFalse();
-        game.IsOrganizersParticipating.Should().BeFalse();
         game.HasBanner.Should().BeFalse();
     }
 
@@ -62,17 +61,57 @@ public class GameTests
         game.AddOrganizer(personId, withParticipation: false);
 
         game.Organizers.Should().ContainSingle().Which.Should().Be(personId);
-        game.IsOrganizersParticipating.Should().BeFalse();
+        game.PlayingOrganizers.Should().BeEmpty();
     }
 
     [Fact]
-    public void AddOrganizer_MedDeltakelse_SetsIsOrganizersParticipating()
+    public void AddOrganizer_MedDeltakelse_LeggerTilISpillendeArrangører()
     {
         var game = Game.Create("Kubb", Guid.NewGuid());
+        var personId = Guid.NewGuid();
 
-        game.AddOrganizer(Guid.NewGuid(), withParticipation: true);
+        game.AddOrganizer(personId, withParticipation: true);
 
-        game.IsOrganizersParticipating.Should().BeTrue();
+        game.PlayingOrganizers.Should().ContainSingle().Which.Should().Be(personId);
+    }
+
+    [Fact]
+    public void AddOrganizer_NyRolle_ByttesFraSpilteTilDømte()
+    {
+        var game = Game.Create("Kubb", Guid.NewGuid());
+        var personId = Guid.NewGuid();
+
+        game.AddOrganizer(personId, withParticipation: true);
+        game.AddOrganizer(personId, withParticipation: false);
+
+        game.Organizers.Should().ContainSingle().Which.Should().Be(personId);
+        game.PlayingOrganizers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AddOrganizer_NyRolle_ByttesFraDømteTilSpilte()
+    {
+        var game = Game.Create("Kubb", Guid.NewGuid());
+        var personId = Guid.NewGuid();
+
+        game.AddOrganizer(personId, withParticipation: false);
+        game.AddOrganizer(personId, withParticipation: true);
+
+        game.Organizers.Should().ContainSingle().Which.Should().Be(personId);
+        game.PlayingOrganizers.Should().ContainSingle().Which.Should().Be(personId);
+    }
+
+    [Fact]
+    public void AddOrganizer_SammeRolleToGanger_GirIngenDuplikater()
+    {
+        var game = Game.Create("Kubb", Guid.NewGuid());
+        var personId = Guid.NewGuid();
+
+        game.AddOrganizer(personId, withParticipation: true);
+        game.AddOrganizer(personId, withParticipation: true);
+
+        game.Organizers.Should().ContainSingle();
+        game.PlayingOrganizers.Should().ContainSingle();
     }
 
     [Fact]

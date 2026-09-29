@@ -38,11 +38,15 @@ public sealed class GetScoreboardQueryHandler(IAppDbContext db)
             foreach (var personId in game.Participants)
                 points[personId] = points.GetValueOrDefault(personId) + rules.Participation;
 
-            // Arrangører — deltakelse avhenger av IsOrganizersParticipating
+            // Arrangører — hver arrangør får poeng ut fra egen rolle.
+            // Deltakerpoeng gis én gang per spill, også når arrangøren står som deltaker.
             foreach (var personId in game.Organizers)
             {
-                if (game.IsOrganizersParticipating)
-                    points[personId] = points.GetValueOrDefault(personId) + rules.OrganizedWithParticipation + rules.Participation;
+                if (game.PlayingOrganizers.Contains(personId))
+                {
+                    var participation = game.Participants.Contains(personId) ? 0 : rules.Participation;
+                    points[personId] = points.GetValueOrDefault(personId) + rules.OrganizedWithParticipation + participation;
+                }
                 else
                     points[personId] = points.GetValueOrDefault(personId) + rules.OrganizedWithoutParticipation;
             }

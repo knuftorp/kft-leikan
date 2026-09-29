@@ -293,18 +293,6 @@ export default async function AdminTournamentDetailPage({ params }: Props) {
             </select>
           </div>
 
-          <div className="flex h-9 items-center gap-2">
-            <input
-              id="isOrganizersParticipating"
-              name="isOrganizersParticipating"
-              type="checkbox"
-              className="h-4 w-4"
-            />
-            <label htmlFor="isOrganizersParticipating" className="text-sm">
-              Arrangørene deltar
-            </label>
-          </div>
-
           <button
             type="submit"
             className="h-9 rounded bg-gray-900 px-3 text-sm text-white hover:bg-gray-700 disabled:opacity-50"

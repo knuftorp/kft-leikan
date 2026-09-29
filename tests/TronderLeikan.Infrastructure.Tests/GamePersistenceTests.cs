@@ -88,6 +88,58 @@ public sealed class GamePersistenceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Game_MedArrangører_LagrerHvemSomSpilte()
+    {
+        await using var context = CreateContext();
+
+        var mari = Guid.NewGuid();
+        var tor = Guid.NewGuid();
+
+        // Mari arrangerte og spilte, Tor arrangerte og dømte
+        var game = Game.Create("Vinquiz", Guid.NewGuid());
+        game.AddOrganizer(mari, withParticipation: true);
+        game.AddOrganizer(tor, withParticipation: false);
+
+        context.Games.Add(game);
+        await context.SaveChangesAsync();
+
+        // Last på nytt fra DB
+        context.ChangeTracker.Clear();
+        var lagretGame = await context.Games.FindAsync(game.Id);
+
+        lagretGame!.Organizers.Should().HaveCount(2)
+            .And.Contain(mari)
+            .And.Contain(tor);
+        lagretGame.PlayingOrganizers.Should().ContainSingle().Which.Should().Be(mari);
+    }
+
+    [Fact]
+    public async Task Game_RollebytteForLagretArrangør_Lagres()
+    {
+        await using var context = CreateContext();
+
+        var mari = Guid.NewGuid();
+
+        var game = Game.Create("Vinquiz", Guid.NewGuid());
+        game.AddOrganizer(mari, withParticipation: true);
+        context.Games.Add(game);
+        await context.SaveChangesAsync();
+
+        // Mari ble feilregistrert som spillende — rett til dømmende på det lagrede spillet
+        context.ChangeTracker.Clear();
+        var lagretGame = await context.Games.FindAsync(game.Id);
+        lagretGame!.AddOrganizer(mari, withParticipation: false);
+        await context.SaveChangesAsync();
+
+        // Last på nytt fra DB
+        context.ChangeTracker.Clear();
+        var oppdatertGame = await context.Games.FindAsync(game.Id);
+
+        oppdatertGame!.Organizers.Should().ContainSingle().Which.Should().Be(mari);
+        oppdatertGame.PlayingOrganizers.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Tournament_MedPointRules_KanLagresOgHentes()
     {
         await using var context = CreateContext();

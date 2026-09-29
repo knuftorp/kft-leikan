@@ -11,6 +11,8 @@ src/TronderLeikan.AppHost/zitadel-bootstrap/
 *.user
 *.userosscache
 *.sln.docstates
+*AGENTS.local.md
+CLAUDE.local.md
 
 # Build results
 [Bb]in/

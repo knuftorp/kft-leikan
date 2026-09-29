@@ -7,6 +7,7 @@ public sealed class Game : Entity
 {
     private readonly List<Guid> _participants = [];
     private readonly List<Guid> _organizers = [];
+    private readonly List<Guid> _playingOrganizers = [];
     private readonly List<Guid> _spectators = [];
     private readonly List<Guid> _firstPlace = [];
     private readonly List<Guid> _secondPlace = [];
@@ -20,11 +21,12 @@ public sealed class Game : Entity
     public string? Location { get; private set; }
     public bool IsDone { get; private set; }
     public GameType GameType { get; private set; }
-    public bool IsOrganizersParticipating { get; private set; }
     public bool HasBanner { get; private set; }
 
     public IReadOnlyList<Guid> Participants => _participants.AsReadOnly();
     public IReadOnlyList<Guid> Organizers => _organizers.AsReadOnly();
+    // Arrangører som også spilte. Arrangører som ikke står her, dømte.
+    public IReadOnlyList<Guid> PlayingOrganizers => _playingOrganizers.AsReadOnly();
     public IReadOnlyList<Guid> Spectators => _spectators.AsReadOnly();
     public IReadOnlyList<Guid> FirstPlace => _firstPlace.AsReadOnly();
     public IReadOnlyList<Guid> SecondPlace => _secondPlace.AsReadOnly();
@@ -40,14 +42,17 @@ public sealed class Game : Entity
             _participants.Add(personId);
     }
 
-    // Legg til arrangør med valgfri deltakelse i spillet
+    // Legg til arrangør med valgfri deltakelse i spillet.
+    // Legges samme person til på nytt, gjelder den siste rollen.
     public void AddOrganizer(Guid personId, bool withParticipation)
     {
         if (!_organizers.Contains(personId))
             _organizers.Add(personId);
 
-        if (withParticipation)
-            IsOrganizersParticipating = true;
+        if (!withParticipation)
+            _playingOrganizers.Remove(personId);
+        else if (!_playingOrganizers.Contains(personId))
+            _playingOrganizers.Add(personId);
     }
 
     // Legg til tilskuer — duplikater ignoreres

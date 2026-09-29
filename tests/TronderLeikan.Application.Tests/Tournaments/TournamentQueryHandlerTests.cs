@@ -59,4 +59,118 @@ public sealed class TournamentQueryHandlerTests
         Assert.Equal(1, ola.Rank);
         Assert.Equal(2, kari.Rank);
     }
+
+    [Fact]
+    public async Task GetScoreboard_ArrangørerFårPoengEtterEgenRolle()
+    {
+        await using var db = TestAppDbContext.Create();
+        var tournament = Tournament.Create("NM", "nm");
+        db.Tournaments.Add(tournament);
+        var personMari = Person.Create("Mari", "Spiller");
+        var personTor = Person.Create("Tor", "Dommer");
+        db.Persons.AddRange(personMari, personTor);
+        // Mari arrangerte og spilte, Tor arrangerte og dømte
+        var game = Game.Create("Spill 1", tournament.Id);
+        game.AddOrganizer(personMari.Id, withParticipation: true);
+        game.AddOrganizer(personTor.Id, withParticipation: false);
+        game.Complete([], [], []);
+        db.Games.Add(game);
+        await db.SaveChangesAsync();
+
+        var result = await new GetScoreboardQueryHandler(db).Handle(new GetScoreboardQuery(tournament.Id));
+
+        // Mari: participation(3) + organizedWithParticipation(1) = 4, Tor: organizedWithoutParticipation(3) = 3
+        Assert.True(result.IsSuccess);
+        var mari = result.Value!.Single(e => e.PersonId == personMari.Id);
+        var tor = result.Value!.Single(e => e.PersonId == personTor.Id);
+        Assert.Equal(4, mari.TotalPoints);
+        Assert.Equal(3, tor.TotalPoints);
+    }
+
+    [Fact]
+    public async Task GetScoreboard_DeltakerSomOgsåErSpillendeArrangør_FårDeltakerpoengÉnGang()
+    {
+        await using var db = TestAppDbContext.Create();
+        var tournament = Tournament.Create("NM", "nm");
+        db.Tournaments.Add(tournament);
+        var personMari = Person.Create("Mari", "Spiller");
+        db.Persons.Add(personMari);
+        // Mari er registrert både som deltaker og som arrangør som spilte
+        var game = Game.Create("Spill 1", tournament.Id);
+        game.AddParticipant(personMari.Id);
+        game.AddOrganizer(personMari.Id, withParticipation: true);
+        game.Complete([], [], []);
+        db.Games.Add(game);
+        await db.SaveChangesAsync();
+
+        var result = await new GetScoreboardQueryHandler(db).Handle(new GetScoreboardQuery(tournament.Id));
+
+        // Mari: participation(3) én gang + organizedWithParticipation(1) = 4
+        Assert.True(result.IsSuccess);
+        var mari = result.Value!.Single(e => e.PersonId == personMari.Id);
+        Assert.Equal(4, mari.TotalPoints);
+    }
+
+    [Fact]
+    public async Task GetScoreboard_ArrangørLagtTilPåNyttMedAnnenRolle_SisteRolleGjelder()
+    {
+        await using var db = TestAppDbContext.Create();
+        var tournament = Tournament.Create("NM", "nm");
+        db.Tournaments.Add(tournament);
+        var personTor = Person.Create("Tor", "Dommer");
+        db.Persons.Add(personTor);
+        // Tor ble først feilregistrert som spillende arrangør, så rettet til dømmende
+        var game = Game.Create("Spill 1", tournament.Id);
+        game.AddOrganizer(personTor.Id, withParticipation: true);
+        game.AddOrganizer(personTor.Id, withParticipation: false);
+        game.Complete([], [], []);
+        db.Games.Add(game);
+        await db.SaveChangesAsync();
+
+        var result = await new GetScoreboardQueryHandler(db).Handle(new GetScoreboardQuery(tournament.Id));
+
+        // Tor: organizedWithoutParticipation(3) = 3
+        Assert.True(result.IsSuccess);
+        var tor = result.Value!.Single(e => e.PersonId == personTor.Id);
+        Assert.Equal(3, tor.TotalPoints);
+    }
+
+    [Fact]
+    public async Task GetScoreboard_ArrangørMedUlikRolleIFlereSpill_AkkumulererPoengOgIgnorererUferdigeSpill()
+    {
+        await using var db = TestAppDbContext.Create();
+        var tournament = Tournament.Create("NM", "nm");
+        db.Tournaments.Add(tournament);
+        var personMari = Person.Create("Mari", "Spiller");
+        var personKari = Person.Create("Kari", "Traa");
+        db.Persons.AddRange(personMari, personKari);
+        // Spill 1: Mari arrangerte, spilte og vant, Kari ble nummer to
+        var game1 = Game.Create("Spill 1", tournament.Id);
+        game1.AddParticipant(personKari.Id);
+        game1.AddOrganizer(personMari.Id, withParticipation: true);
+        game1.Complete([personMari.Id], [personKari.Id], []);
+        // Spill 2: Mari arrangerte og dømte
+        var game2 = Game.Create("Spill 2", tournament.Id);
+        game2.AddOrganizer(personMari.Id, withParticipation: false);
+        game2.Complete([], [], []);
+        // Spill 3 er ikke ferdig og skal ikke gi poeng
+        var game3 = Game.Create("Spill 3", tournament.Id);
+        game3.AddParticipant(personKari.Id);
+        game3.AddOrganizer(personMari.Id, withParticipation: true);
+        db.Games.AddRange(game1, game2, game3);
+        await db.SaveChangesAsync();
+
+        var result = await new GetScoreboardQueryHandler(db).Handle(new GetScoreboardQuery(tournament.Id));
+
+        // Mari: spill 1 participation(3) + organizedWithParticipation(1) + firstPlace(3) = 7,
+        //       spill 2 organizedWithoutParticipation(3) = 3, totalt 10
+        // Kari: spill 1 participation(3) + secondPlace(2) = 5
+        Assert.True(result.IsSuccess);
+        var mari = result.Value!.Single(e => e.PersonId == personMari.Id);
+        var kari = result.Value!.Single(e => e.PersonId == personKari.Id);
+        Assert.Equal(10, mari.TotalPoints);
+        Assert.Equal(5, kari.TotalPoints);
+        Assert.Equal(1, mari.Rank);
+        Assert.Equal(2, kari.Rank);
+    }
 }

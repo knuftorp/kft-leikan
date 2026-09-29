@@ -15,7 +15,6 @@ internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
         builder.Property(g => g.Location).HasMaxLength(500);
         builder.Property(g => g.IsDone);
         builder.Property(g => g.GameType);
-        builder.Property(g => g.IsOrganizersParticipating);
         builder.Property(g => g.HasBanner);
 
         builder.HasIndex(g => g.TournamentId);
@@ -31,6 +30,7 @@ internal sealed class GameConfiguration : IEntityTypeConfiguration<Game>
 
         UuidArray("_participants", "Participants");
         UuidArray("_organizers",   "Organizers");
+        UuidArray("_playingOrganizers", "PlayingOrganizers");
         UuidArray("_spectators",   "Spectators");
         UuidArray("_firstPlace",   "FirstPlace");
         UuidArray("_secondPlace",  "SecondPlace");

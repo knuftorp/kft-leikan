@@ -48,8 +48,6 @@ export async function createGameAction(
     tournamentId,
     name: formData.get("name") as string,
     gameType: formData.get("gameType") as string,
-    isOrganizersParticipating:
-      formData.get("isOrganizersParticipating") === "on",
   };
 
   const res = await fetch(`${API_BASE}/api/v1/games`, {
