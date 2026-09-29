@@ -76,6 +76,45 @@ public class GameTests
     }
 
     [Fact]
+    public void AddOrganizer_NyRolle_ByttesFraSpilteTilDømte()
+    {
+        var game = Game.Create("Kubb", Guid.NewGuid());
+        var personId = Guid.NewGuid();
+
+        game.AddOrganizer(personId, withParticipation: true);
+        game.AddOrganizer(personId, withParticipation: false);
+
+        game.Organizers.Should().ContainSingle().Which.Should().Be(personId);
+        game.PlayingOrganizers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AddOrganizer_NyRolle_ByttesFraDømteTilSpilte()
+    {
+        var game = Game.Create("Kubb", Guid.NewGuid());
+        var personId = Guid.NewGuid();
+
+        game.AddOrganizer(personId, withParticipation: false);
+        game.AddOrganizer(personId, withParticipation: true);
+
+        game.Organizers.Should().ContainSingle().Which.Should().Be(personId);
+        game.PlayingOrganizers.Should().ContainSingle().Which.Should().Be(personId);
+    }
+
+    [Fact]
+    public void AddOrganizer_SammeRolleToGanger_GirIngenDuplikater()
+    {
+        var game = Game.Create("Kubb", Guid.NewGuid());
+        var personId = Guid.NewGuid();
+
+        game.AddOrganizer(personId, withParticipation: true);
+        game.AddOrganizer(personId, withParticipation: true);
+
+        game.Organizers.Should().ContainSingle();
+        game.PlayingOrganizers.Should().ContainSingle();
+    }
+
+    [Fact]
     public void AddSpectator_LeggTilTilskuer()
     {
         var game = Game.Create("Kubb", Guid.NewGuid());

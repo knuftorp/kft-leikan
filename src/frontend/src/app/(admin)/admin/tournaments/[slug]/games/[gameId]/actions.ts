@@ -18,24 +18,47 @@ export async function addParticipantAction(
   revalidatePath(`/admin/tournaments/${tournamentSlug}/games/${gameId}`);
 }
 
+// Tilstand for arrangørskjemaet - error vises i skjemaet
+export type AddOrganizerState = { error?: string };
+
 // Legger til en arrangør med rolle via POST /api/v1/games/:gameId/organizers.
 // Er personen allerede arrangør, erstattes rollen.
 export async function addOrganizerAction(
   gameId: string,
   tournamentSlug: string,
+  _prevState: AddOrganizerState,
   formData: FormData
-) {
-  const personId = formData.get("personId") as string;
-  const withParticipation = formData.get("role") === "spilte";
+): Promise<AddOrganizerState> {
+  const personId = formData.get("personId");
+  const role = formData.get("role");
 
-  const res = await fetch(`${API_BASE}/api/v1/games/${gameId}/organizers`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ personId, withParticipation }),
-  });
+  // Validerer på serveren - required i skjemaet beskytter bare i nettleseren
+  if (typeof personId !== "string" || personId === "") {
+    return { error: "Velg en spiller." };
+  }
+  if (role !== "spilte" && role !== "dømte") {
+    return { error: "Velg om arrangøren spilte eller dømte." };
+  }
 
-  if (!res.ok) throw new Error("Kunne ikke legge til arrangør");
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api/v1/games/${gameId}/organizers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ personId, withParticipation: role === "spilte" }),
+    });
+  } catch {
+    return { error: "Fikk ikke kontakt med API-et. Prøv igjen om litt." };
+  }
+
+  if (!res.ok) {
+    // API-et svarer med ProblemDetails - viser detail hvis den finnes
+    const problem = await res.json().catch(() => null);
+    return { error: problem?.detail ?? "Kunne ikke legge til arrangør." };
+  }
+
   revalidatePath(`/admin/tournaments/${tournamentSlug}/games/${gameId}`);
+  return {};
 }
 
 // Fullfører et spill med plasseringer via POST /api/v1/games/:gameId/complete
